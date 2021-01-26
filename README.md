@@ -1,26 +1,33 @@
 # ClosedDiversity
 
-Description :
-Les jeux de données sont stockées dans le fichier data/ en fichier compressé zip. Tous les jeux de données proviennent du dépôt CP4IM "Tias Guns".
-Pour que le projet compile, utiliser Maven et le fichier pom.xml qui va importer toutes les librairies nécessaires (Choco 4 en particulier). 
-Sinon, il faut télécharger et ajouter Choco 4 au projet et l'ajouter en "external jar" au projet. (téléchargement: https://github.com/chocoteam/choco-solver/releases/tag/4.0.2).
+Implementation of the **ClosedDiversity** pattern sampler.
 
+For running the code , the minimum command syntax is :
+JAVA -JAR PROGRAMM CONSTRAINT datasetPath resultsPatternsFilePath resultsSummaryFilePath -f absoluteFrequency OPTIONS 
+CONSTRAINT = 
+	CP : ClosedPattern
+	CD : ClosedDiversity
+	CPJ : ClosedPattern + Jaccard Consistancy evaluation
+	CDJ : ClosedDiversity + Jaccard Consistancy evaluation
 
-Options de lancement :
+datasetPath : dataset file path
+resultsPatternsFilePath : result itemsets file path
+resultsSummaryFilePath : file for some logs data
 
-seuil max de la diversité [0,1] pourcentage.
-seuil min de la fréquence [0,1] pourcentage.
-exemple : mushroom 0.2 0.3 
+OPTIONS = 
+	-f [num]: the frequency absolute value (between 0 and total number of transactions)
+	-j [threshold]: the diversity threshold (float between 0 and 1)
+	-s [strategy] [witness strategy]: the search strategy [MINCOV NONE, WITNESS WITNESSFIRSTSOL, WITNESS WITNESSDIVSOL]
+	-th [num]: the number of threads to use for jaccard evaluation 
+
+The second, third and fourth arguments must be set for the dataset, the itemsets file and the logs summary file 
 
 
 ############################################################
-diversity topk
-#################
-Arguments :
-	arg1 : path to dataset
-	arg2 : frequency threshold
-	arg3 : path to results file
-	arg4 : path to analyze file
-	arg6 : agregation function --> MAX, AVG, MIN (optional, by default MAX)
-  
-  
+
+
+For a detailed description, consult 
+the following [publication](https://hal-genes.archives-ouvertes.fr/UNICAEN/hal-02935080):
+
+A. Hien, S. Loudni, N. Aribi, Y. Lebbah, M. Laghzaoui, A. Ouali, A. Zimmermann (2020)
+*A Relaxation-based Approach for Mining Diverse Closed Patterns *
