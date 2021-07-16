@@ -1,4 +1,4 @@
-package constraints;
+package fr.unicaen.mining;
 
 import static java.lang.System.out;
 import static org.chocosolver.solver.search.strategy.Search.*;
@@ -16,28 +16,33 @@ import org.chocosolver.solver.Model;
 import org.chocosolver.solver.Solver;
 import org.chocosolver.solver.constraints.Constraint;
 import org.chocosolver.solver.exception.ContradictionException;
-import org.chocosolver.solver.search.strategy.selectors.values.IntValueSelector;
-import org.chocosolver.solver.search.strategy.selectors.variables.VariableSelector;
+//import org.chocosolver.solver.search.strategy.selectors.values.IntValueSelector;
+//import org.chocosolver.solver.search.strategy.selectors.variables.VariableSelector;
 import org.chocosolver.solver.variables.BoolVar;
-import org.chocosolver.solver.variables.IntVar;
+//import org.chocosolver.solver.variables.IntVar;
 
-import constraints.AbstractProblem;
-import constraints.closeddiv.ClosedDiversity;
-import constraints.closedpattern.ClosedPatterns;
-import constraints.dataset.DataSet;
-import constraints.itemsets.History;
-import constraints.itemsets.Solution;
-import constraints.tools.MemoryLogger;
-import constraints.tools.TItemSet;
-import constraints.tools.TTransactionSet;
+import fr.unicaen.mining.datasets.DataSet;
+import fr.unicaen.mining.models.AbstractProblem;
+import fr.unicaen.mining.models.closedpatterns.globalconstraints.ClosedPatterns;
+import fr.unicaen.mining.models.closedpatterns.globalconstraints.ClosedPatterns_with_Transactions;
+import fr.unicaen.mining.models.closeddiversity.ClosedDiversity;
+//import fr.unicaen.mining.models.xor.ConstraintXOR;
+import fr.unicaen.mining.structures.History;
+import fr.unicaen.mining.structures.Solution;
+import fr.unicaen.mining.structures.TItemSet;
+//import fr.unicaen.mining.structures.TTransactionSet;
+import fr.unicaen.mining.util.ClosedDiversityStrategies;
+import fr.unicaen.mining.util.MemoryLogger;
 
 
 public class RunMain extends AbstractProblem {
 	static String[] argparam;
-	BoolVar[] p;
+	public BoolVar[] p;
+	public BoolVar[] T;
 	public Constraint c;
-	public ClosedPatterns cp;
 	public ClosedDiversity cd;
+	public ClosedPatterns cp;
+	public ClosedPatterns_with_Transactions cpd;
 	
 	int minFreq;
 	double jmax;
@@ -55,7 +60,7 @@ public class RunMain extends AbstractProblem {
 	public String searchStrategy = "";
 	public static String witnessStrategy = "";
 	
-	public int witnessItem = -1;
+	public static int witnessItem = -1;
 	public static int currentItem = -1;
 	public static boolean isWitness = false;
 	
@@ -98,10 +103,24 @@ public class RunMain extends AbstractProblem {
 			
 			
 			if(argparam.length == 6) {
-				method = argparam[4]; // CP
+				if(argparam[4].equals("CP")) { // CP
+					method = argparam[4]; 
+					
+					cp = new ClosedPatterns(dataset, minFreq, p);
+					c = new Constraint("Closed Patterns", cp);
+				}
+				else { // CPD
+					method = argparam[5];
+					T = model.boolVarArray("transactions", dataset.getTransactionsSize());
+					
+					// diversity threshold
+					jmax = Double.valueOf(argparam[4]);
+					
+					cpd = new ClosedPatterns_with_Transactions(dataset, minFreq, p, T);
+					c = new Constraint("Closed Patterns ++ Diversity Constraint", cpd);
+					//model.post(c);
+				}
 				
-				cp = new ClosedPatterns(dataset, minFreq, p);
-				c = new Constraint("Closed Diversity Constraint", cp);
 			}
 			else if(argparam.length == 7) {
 				method = argparam[5]; // CPJ
@@ -117,7 +136,7 @@ public class RunMain extends AbstractProblem {
 					System.exit(1);
 				}
 				cp = new ClosedPatterns(dataset, minFreq, p);
-				c = new Constraint("Closed Diversity Constraint", cp);
+				c = new Constraint("Closed Patterns ++ Jaccard Evaluation", cp);
 			}
 			else if(argparam.length > 7) {
 				method = argparam[7]; // CD and CDJ
@@ -138,7 +157,7 @@ public class RunMain extends AbstractProblem {
 					System.exit(1);
 				}
 				this.cd = new ClosedDiversity(dataset, minFreq, jmax, history.getAllItemsets(), p);
-				c = new Constraint("Closed Diversity Constraint", cd);
+				c = new Constraint("Closed Diversity", cd);
 			}
 			
 			model.post(c);
@@ -151,110 +170,19 @@ public class RunMain extends AbstractProblem {
 	public void configureSearch() {
 		Solver s = model.getSolver();
 		
-		if((method.equals("CP")) || (method.equals("CPJ"))) {
+		if((method.equals("CP")) || (method.equals("CPJ")) || (method.equals("CPD"))) {
 			s.setSearch(minDomUBSearch(p));
 		}
 		else {
-			s.setSearch(intVarSearch(
-				// variable selector
-				(VariableSelector<IntVar>) variables -> {
-					BoolVar var_i = null;
-					int item = -1, i = 0;
-					
-					// we leave a witness node
-					if((witnessStrategy.equals("WITNESSDIVSOL")) && (witnessItem != -1) && 
-							p[witnessItem].isInstantiatedTo(0)) {
-						isWitness = false;
-						witnessItem = -1;
-						// witness_node.clear();
-					}
-					
-					// if isWitness --> witness node : don't evaluate UB and LB
-					// !isWitness and witnessItem == -1 --> evaluate UB to know if it is a witness node
-					// !isWitness and witnessItem != -1 --> under a witness node, only the first pattern is considered as witness. 
-					// 					For the others patterns, reactivate LB evaluatopn 
-					if(!isWitness && (witnessItem == -1)) {
-						switch(this.searchStrategy) {
-							case "WITNESS":
-								if(nbSolutions > 0) {
-									TTransactionSet covPos1 = new TTransactionSet(this.cd.cov);
-									for (IntVar v : variables) {
-										if (!v.isInstantiated()) {
-											BitSet cov_XUx = (BitSet) dataset.covers.intersectCover(covPos1,i).getListTransactions();
-											if(patternGrowth_UB(cov_XUx)) {
-												item = i;
-												/*
-												witness_node = (BitSet) this.cd.sigma_plus.clone();
-												witness_node.set(item);
-												//*/
-												break;
-											}
-										}
-										i++;
-									}
-								}
-								
-								if(item != -1) {
-									isWitness = true; // deactivation of LB evaluation
-									var_i = p[item]; // get the witness variable
-									nbWitnessNode++;
-									if(witnessStrategy.equals("WITNESSDIVSOL"))
-										witnessItem = item;
-								}
-								else if(this.cd.nextVar != -1) {
-									// get the next free variable with the lowest estimated Frequency
-									item = this.cd.nextVar;
-									var_i = p[item];
-								}
-								currentItem = item;
-								break;
-
-							case "MINCOV":
-								if(this.cd.nextVar != -1) {
-									// Estimated Frequencies
-									item = this.cd.nextVar;
-									var_i = p[item];
-								}
-								currentItem = item;
-								break;
-
-							default:
-								// Estimated Frequencies
-								if(this.cd.nextVar != -1) {
-									item = this.cd.nextVar;
-									var_i = p[item];
-								}
-								currentItem = item;
-								break;
-						}
-					}
-					else {
-						if(this.cd.nextVar != -1) {
-							// Estimated Frequencies
-							item = this.cd.nextVar;
-							var_i = p[item];
-							currentItem = item;
-						}
-						else {
-							i = 0;
-							for (IntVar v : variables) {
-								if (!v.isInstantiated()) {
-									var_i = p[i];
-									item = i;
-									currentItem = item;
-									break;
-								}
-								i++;
-							}
-						}
-					}
-					return var_i;
-				},
-				// value selector
-				(IntValueSelector) var -> var.getUB(),
-
-				// variables to branch on
-				p));
+			if(searchStrategy.equals("MINCOV")){
+				ClosedDiversityStrategies.defineMincovSearchStrategy(model, cd,  p);
+			}
+			else if(searchStrategy.equals("WITNESS")) {
+				ClosedDiversityStrategies.defineWitnessSearchStrategy(model, cd, p);
+			}
+			else {
+				model.getSolver().setSearch(minDomUBSearch(p));
+			}
 		}
 	}
 	
@@ -437,12 +365,14 @@ public class RunMain extends AbstractProblem {
 			e2.printStackTrace();
 			System.exit(1);
 		}
+
+		//String output_data = argparam[1] + ";" + time + ";" + nb_solutions + ";" + nb_nodes + "\n";
+		String output_data = file.getName() + ";" + time + ";" + nb_solutions + ";" + nb_nodes + "\n";
 		
 		file = new File(pathAnalyse);
 		fr = null;
 		try {
 			fr = new FileWriter(file, false);
-			String output_data = argparam[1] + ";" + time + ";" + nb_solutions + ";" + nb_nodes + "\n";
 			fr.write(output_data);
 			fr.close();
 		} catch (IOException e1) {
@@ -454,51 +384,142 @@ public class RunMain extends AbstractProblem {
 	}
 	
 	
+	public void solveClosedPattern_with_diversity(Solver s) {
+		System.out.println("SOLVE ClosedPatterns + Div Constraint : --> minFreq = " + minFreq + 
+				"/" + dataset.getTransactionsSize() + ", Jmax = " + jmax);
+		System.out.println("------------------------------------------------------------------\n\n");
+		
+		//s.showDecisions();
+		//s.showContradiction();
+		//s.showStatistics();
+		
+		MemoryLogger.getInstance().reset();
+		while(s.solve()) {
+			BitSet candidat = new BitSet(); 
+			for (int item = 0; item < dataset.getNbrVar(); item++) {
+				if (p[item].isInstantiatedTo(1))
+					candidat.set(item); // candidate' items
+			}
+			//System.out.println("::::::::::::::::::::::::::::::::::\n");
+			if(candidat.isEmpty())
+				continue; // reject empty pattern
+			
+			BitSet transactions = new BitSet();
+			for (int tr = 0; tr < dataset.getTransactionsSize(); tr++) {
+				if (T[tr].isInstantiatedTo(1))
+					transactions.set(tr); // candidate' transactions
+			}
+			
+			history.addSolutionCP(new Solution(candidat), transactions);
+			nbSolutions = history.getNbElement();
+			diversity_constraint(T, candidat, jmax);
+			
+		}
+		
+		// --- POST-TREATMENT ---
+		
+		MemoryLogger.getInstance().checkMemory();
+		double cpu_time = s.getTimeCount();
+		long nb_nodes = s.getNodeCount();
+		long allSolutionsFound = s.getSolutionCount();
+		long nb_fails = s.getFailCount();
+		
+		File datasetFile = new File(pathInput);
+		File outputFile = new File(pathOutput);
+		
+		String output_data = "" + datasetFile.getName() + ";" + outputFile.getName() + ";" +
+				((double) minFreq/dataset.getTransactionsSize()) + ";" + jmax + ";" + 
+				cpu_time + ";" + allSolutionsFound + ";" + nbSolutions + ";" + 
+				nb_nodes + ";" + nb_fails + ";NONE\n";
+		
+
+		System.out.println("\n\n*************************** LOGS ***********************\n");
+		//System.out.println("Global Constraint ClosedP ++ Div Constraint");
+		
+		System.out.println("dataset =>>> " + datasetFile.getName());
+		System.out.println("MinSupport  =>>> " + minFreq);
+		System.out.println("Jmax = " + jmax);
+		System.out.println("CPU Time = " + s.getTimeCount());
+		System.out.println("All solutions count = " + nbSolutions);
+		//System.out.println("All candidates found = " + allSolutionsFound);
+		System.out.println("Max Memory = " + MemoryLogger.getInstance().getMaxMemory());
+		System.out.println("Backtrak Count :" + s.getBackTrackCount());
+		System.out.println("Nb Nodes = " + s.getNodeCount());
+		System.out.println("Nb of Fails = " + s.getFailCount());
+		System.out.println("Search Strategy = " + searchStrategy);
+		System.out.println("***** END *****");
+
+		File file = new File(pathOutput);
+		FileWriter fr;
+		try {
+			// save patterns and their covers
+			fr = new FileWriter(file, false);
+			//this.history.getCPSolutionsWithCover(fr);
+			this.history.getCPSolutions(fr);
+			fr.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		file = new File(pathAnalyse);
+		try {
+			// save summary of the results
+			fr = new FileWriter(file, false);
+			fr.write(output_data);
+			fr.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+	}
+	
+	/*
+	public void addToHistory(BitSet candidat){
+		BitSet cov = dataset.covers.getCoverPOP(new TItemSet(candidat)).getListTransactions();
+		history.addSolutionCD(new Solution(candidat), cov, 0);
+		nbSolutions = history.getNbElement();
+	}
+	//*/
+	
+	public void diversity_constraint(BoolVar[] Tr, BitSet pattern, double jmax) {
+		BitSet cov = dataset.covers.getCoverPOP(new TItemSet(pattern)).getListTransactions();
+		int[] cover = cov_to_int(cov, Tr.length);
+		
+		int[] cste_tab = new int[Tr.length];
+		int cste = 0;
+		for(int t=0; t<Tr.length; t++) {
+			cste_tab[t] = (int) Math.round(
+					(cover[t] - jmax*(1-cover[t]))*100); // H[q,t] - Jmax*(1-H[q,t])
+			cste += (int) Math.round(cover[t] * jmax * 100); // sum_t(Jmax*H[q,t])
+		}
+		
+		// On poste ici la contrainte de diversité
+		model.scalar(Tr, cste_tab, "<=", cste).post();
+	}
+	
+	private int[] cov_to_int(BitSet cov, int nb) {
+		int[] int_cov = new int[nb];
+		for(int i=0; i<nb; i++) {
+			int_cov[i] = cov.get(i) ? 1 : 0;
+		}
+		return int_cov;
+	}
+	
+	
 	public void solve() {
 		Solver s = model.getSolver();
 		if(method.equals("CP") || method.equals("CPJ")) {
 			solveClosedPattern(s);
 		}
+		else if(method.equals("CPD")) {
+			solveClosedPattern_with_diversity(s);
+		}
 		else if(method.equals("CD") || method.equals("CDJ")) {
 			solveClosedDiversity(s);
 		}
 	}
-	
-	
-	public boolean patternGrowth_UB(BitSet cov_XUx) {
-		boolean grow = true;
-		for(int i = 0; i < this.nbSolutions; i++) {
-			// list of transactions covered by history itemSet Hi
-			BitSet cov_Hi = new BitSet();
-			cov_Hi = dataset.coversBorne.getCoverPOP(new TItemSet(history.getAllItemsets()[i].
-					getItemset())).getListTransactions();
-			
-			BitSet cov_intersect = (BitSet) cov_XUx.clone();
-			cov_intersect.and(cov_Hi);
-			
-			double ub_jaccard = 0.0;
-			BitSet covP_Hi = (BitSet) cov_Hi.clone();
-			covP_Hi.andNot(cov_XUx);
-			
-			if(cov_intersect.cardinality() < minFreq) {
-				ub_jaccard = ((double) cov_intersect.cardinality()) / 
-						((double) (minFreq + covP_Hi.cardinality()));
-			}
-			else {
-				ub_jaccard = ((double) cov_intersect.cardinality()) / 
-						((double) (cov_intersect.cardinality() + covP_Hi.cardinality()));
-			}
-			
-			if((ub_jaccard > ClosedDiversity.jMax) || 
-					((ub_jaccard == ClosedDiversity.jMax) && (ub_jaccard == 0)) || 
-					((ub_jaccard == ClosedDiversity.jMax) && (ub_jaccard == 1))) {
-				grow = false;
-				break;
-			}
-		}
-		return grow;
-	}
-	
 	
 	public boolean test_jaccard(BitSet cand) {
 		boolean test_jaccard = true;
@@ -589,6 +610,7 @@ public class RunMain extends AbstractProblem {
 		msg += "\t" + "CP : ClosedPattern\n";
 		msg += "\t" + "CD : ClosedDiversity\n";
 		msg += "\t" + "CPJ : ClosedPattern + Jaccard Consistancy evaluation\n";
+		msg += "\t" + "CPD : ClosedPattern + Diversity Constraint\n";
 		msg += "\t" + "CDJ : ClosedDiversity + Jaccard Consistancy evaluation\n\n";
 		msg += "datasetPath : dataset file path\n";
 		msg += "resultsPatternsFilePath : result itemsets file path\n";
@@ -618,8 +640,9 @@ public class RunMain extends AbstractProblem {
 		}
 		
 		String constraint = args[0];
-		if(!constraint.equals("CP") && !constraint.equals("CD") && !constraint.equals("CPJ") && !constraint.equals("CDJ")) {
-			System.out.println("The \'CONSTRAINT\' parameter must be in the list [CP, CD, CPJ, CDJ]\n");
+		if(!constraint.equals("CP") && !constraint.equals("CD") && !constraint.equals("CPD") 
+				&& !constraint.equals("CPJ") && !constraint.equals("CDJ")) {
+			System.out.println("The \'CONSTRAINT\' parameter must be in the list [CP, CPD, CD, CPJ, CDJ]\n");
 			System.out.println(msg);
 			System.exit(1);
 		}
@@ -655,7 +678,8 @@ public class RunMain extends AbstractProblem {
 		
 		// get jmax
 		double jmax = 0.0;
-		if(constraint.equals("CD") || constraint.equals("CPJ") || constraint.equals("CDJ")) {
+		if(constraint.equals("CD") || constraint.equals("CPD") || constraint.equals("CPJ") 
+				|| constraint.equals("CDJ")) {
 			p = Pattern.compile("(\\-)[j](\\s)[0](\\.)(\\d)+");
 			m = p.matcher(params);
 			while (m.find()) { 
@@ -757,6 +781,10 @@ public class RunMain extends AbstractProblem {
 		else if(constraint.equals("CPJ")) {
 			res = datasetPath + " " + resultPath + " " + summaryPath + " " + minsup + " " 
 					+ jmax + " " + constraint + " " + nbThreads + "";
+		}
+		else if(constraint.equals("CPD")) {
+			res = datasetPath + " " + resultPath + " " + summaryPath + " " + minsup + " " 
+					+ jmax + " " + constraint + "";
 		}
 		else if(constraint.equals("CD") || constraint.equals("CDJ")) {
 			res = datasetPath + " " + resultPath + " " + summaryPath + " " + minsup + " " 

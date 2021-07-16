@@ -1,10 +1,10 @@
-package constraints.tools;
+package fr.unicaen.mining.structures;
 
 import java.util.ArrayDeque;
 import java.util.BitSet;
 import java.util.Deque;
 
-import constraints.dataset.DataSet;
+import fr.unicaen.mining.datasets.DataSet;
 
 public class IncrementCovers {
 	private DataSet dataSet;

@@ -6,7 +6,7 @@
  * Licensed under the BSD 4-clause license.
  * See LICENSE file in the project root for full license information.
  */
-package constraints;
+package fr.unicaen.mining.models;
 
 import org.chocosolver.pf4cs.IProblem;
 import org.chocosolver.pf4cs.SetUpException;

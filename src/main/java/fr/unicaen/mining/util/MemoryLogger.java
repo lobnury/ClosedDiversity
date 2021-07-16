@@ -1,4 +1,4 @@
-package constraints.tools;
+package fr.unicaen.mining.util;
 
 /**
  * This class is used to record the maximum memory usaged of an algorithm during

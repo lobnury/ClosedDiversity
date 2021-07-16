@@ -3,9 +3,9 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
-    <groupId>ClosedDiversity</groupId>
-	<artifactId>ClosedDiversity</artifactId>
-	<version>ECML-PKDD-20-choco4.0.3</version>
+    <groupId>GreycMining</groupId>
+	<artifactId>PatternMiningMethods</artifactId>
+	<version>1.0.1</version>
 	<packaging>jar</packaging>
 
 	<name>Solver</name>
@@ -34,6 +34,20 @@
 			<artifactId>args4j</artifactId>
 			<version>2.33</version>
 		</dependency>
+		<!-- https://mvnrepository.com/artifact/org.scijava/native-lib-loader -->
+		<dependency>
+			<groupId>org.scijava</groupId>
+			<artifactId>native-lib-loader</artifactId>
+			<version>2.3.4</version>
+		</dependency>
+		<!-- https://mvnrepository.com/artifact/org.apache.commons/commons-math3 -->
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-math3</artifactId>
+			<version>3.6.1</version>
+		</dependency>
+
+		
 	</dependencies>
 
 	<properties>
@@ -48,7 +62,7 @@
                     <artifactId>maven-assembly-plugin</artifactId>
                     <executions>
                         <execution>
-                            <id>build-closed</id>
+                            <id>build-pattern-mining</id>
                             <phase>package</phase>
                             <goals>
                                 <goal>single</goal>
@@ -57,13 +71,13 @@
                                 <archive>
                                     <manifest>
                                         <addClasspath>true</addClasspath>
-                                        <mainClass>constraints.RunMain</mainClass>
+                                        <mainClass>fr.unicaen.mining.RunMain</mainClass>
                                     </manifest>
                                 </archive>
                                 <descriptorRefs>
                                     <descriptorRef>jar-with-dependencies</descriptorRef>
                                 </descriptorRefs>
-                                <finalName>Closed-choco4-0-3</finalName>
+                                <finalName>PatternMining-Methods-choco4-10-6</finalName>
                             </configuration>
                         </execution>
                     </executions>

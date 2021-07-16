@@ -1,4 +1,4 @@
-package constraints.closedpattern;
+package fr.unicaen.mining.models.closedpatterns.globalconstraints;
 
 import java.util.BitSet;
 import java.util.HashMap;
@@ -10,9 +10,9 @@ import org.chocosolver.solver.exception.ContradictionException;
 import org.chocosolver.solver.variables.BoolVar;
 import org.chocosolver.util.ESat;
 
-import constraints.dataset.DataSet;
-import constraints.tools.TItemSet;
-import constraints.tools.TTransactionSet;
+import fr.unicaen.mining.datasets.DataSet;
+import fr.unicaen.mining.structures.TItemSet;
+import fr.unicaen.mining.structures.TTransactionSet;
 
 public final class ClosedPatterns extends Propagator<BoolVar> {
 	BoolVar[] p;

@@ -1,4 +1,4 @@
-package constraints.tools;
+package fr.unicaen.mining.structures;
 
 import java.util.ArrayList;
 import java.util.BitSet;

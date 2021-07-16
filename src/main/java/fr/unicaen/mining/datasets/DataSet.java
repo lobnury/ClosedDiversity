@@ -1,4 +1,4 @@
-package constraints.dataset;
+package fr.unicaen.mining.datasets;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -13,9 +13,9 @@ import java.util.Set;
 import java.util.StringTokenizer;
 import java.util.stream.Collectors;
 
-import constraints.tools.IncrementCovers;
-import constraints.tools.TItemSet;
-import constraints.tools.TTransactionSet;
+import fr.unicaen.mining.structures.IncrementCovers;
+import fr.unicaen.mining.structures.TItemSet;
+import fr.unicaen.mining.structures.TTransactionSet;
 
 public class DataSet {
 	private BitSet[] VerticalDataBase;

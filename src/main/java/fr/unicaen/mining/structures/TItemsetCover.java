@@ -1,4 +1,4 @@
-package constraints.tools;
+package fr.unicaen.mining.structures;
 
 public class TItemsetCover {
 	public TItemSet itemSet;

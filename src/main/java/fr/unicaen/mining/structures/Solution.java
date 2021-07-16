@@ -1,4 +1,4 @@
-package constraints.itemsets;
+package fr.unicaen.mining.structures;
 
 import java.util.BitSet;
 

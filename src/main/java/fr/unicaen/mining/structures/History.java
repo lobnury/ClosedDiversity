@@ -1,4 +1,4 @@
-package constraints.itemsets;
+package fr.unicaen.mining.structures;
 
 import java.io.FileWriter;
 import java.io.IOException;
@@ -27,6 +27,15 @@ public class History {
 		nbElement++;
 	}
 	
+	public void addSolutionCP(Solution s, BitSet cov) {
+		s.setCovX(cov);
+		Solution[] hist = new Solution[nbElement + 1];
+		for (int i = 0; i < nbElement; i++)
+			hist[i] = allItemsets[i];
+		hist[nbElement] = s;
+		allItemsets = hist;
+		nbElement++;
+	}
 
 	public void addSolutionCD(Solution s, BitSet cov, int label) {
 		s.setCovX(cov);
@@ -71,7 +80,28 @@ public class History {
 
 		System.out.println("\n");
 	}
-
+	
+	public void getCPSolutions(FileWriter fr) {
+		for (int i = 0; i < nbElement; i++) {
+			String s = "";
+			BitSet h = allItemsets[i].getItemset();
+			s += "[ ";
+			for (int item = h.nextSetBit(0); item != -1; item = h.nextSetBit(item + 1)) {
+				s += "" + (item + 1) + " ";
+			}
+			s += "] ";
+			//s += "[ " + formatCover(allItemsets[i].getCovX()) + " ] ";
+			s += "[  ]\n";
+			
+			try {
+				fr.write(s);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				System.out.println("Error occured when writing solutions.");
+				e.printStackTrace();
+			}
+		}
+	}
 	
 	public void getCPSolutionsWithCover(FileWriter fr) {
 		for (int i = 0; i < nbElement; i++) {

@@ -1,4 +1,4 @@
-package constraints.dataset;
+package fr.unicaen.mining.datasets;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
 
-import constraints.tools.ObjectTransaction;;
+import fr.unicaen.mining.structures.ObjectTransaction;;
 
 /**
  * This is the parser class for the DataObjectSet. It has actions related to
