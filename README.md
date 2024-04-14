@@ -45,7 +45,7 @@ The second, third and fourth arguments must be set for the dataset, the itemsets
 ## Documentations
 
 For a detailed description, consult 
-the following [publication](https://hal-genes.archives-ouvertes.fr/UNICAEN/hal-02935080):
+the following [publication](https://normandie-univ.hal.science/hal-03244005v1):
 
 A. Hien, S. Loudni, N. Aribi, Y. Lebbah, M. Laghzaoui, A. Ouali, A. Zimmermann (2020), 
 *A Relaxation-based Approach for Mining Diverse Closed Patterns*
